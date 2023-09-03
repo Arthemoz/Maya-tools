@@ -2,10 +2,13 @@ import maya.cmds as cmds
 
 def remove_existing_expression(attribute, lights):
     # Parcourir les lumières sélectionnées et supprimer l'expression existante sur l'attribut spécifié
+    to_delete = []
     for light in lights:
-        existing_expressions = cmds.listConnections("{}.{}".format(light, attribute), type="expression")
-        if existing_expressions:
-            cmds.delete(existing_expressions)
+        existing_expressions = cmds.listConnections("{}.{}".format(light, attribute), type="expression") or []
+        to_delete.extend(existing_expressions)
+
+    if to_delete:
+        cmds.delete(to_delete)
 
 def apply_expression_to_lights(attribute, expression, lights):
     if not lights:
@@ -56,18 +59,16 @@ def on_apply_button_pressed(attribute_field, expression_field):
     expression = cmds.textField(expression_field, query=True, text=True)
     all_lights = cmds.checkBox("allLightsCheckbox", query=True, value=True)
 
+    lights_types = ["light"]
     if all_lights:
-        lights = cmds.ls(type=["ambientLight", "RedshiftPhysicalLight", "pointLight"])
+        lights = cmds.ls(type=lights_types)
     else:
-        selected_objects = cmds.ls(selection=True)
-        lights = []
-        for obj in selected_objects:
-            if cmds.nodeType(obj) in ["ambientLight", "RedshiftPhysicalLight", "pointLight"]:
-                lights.append(obj)
-            else:
-                light_shape = cmds.listRelatives(obj, shapes=True, type=["ambientLight", "RedshiftPhysicalLight", "pointLight"])
-                if light_shape:
-                    lights.append(light_shape[0])
+        selected =mc.ls(sl=True)
+        lights = mc.ls(
+            selected + (mc.listRelatives(selected, allDescendents=True, path=True) or []),
+            type=lights_types
+        )
+
 
     apply_expression_to_lights(attribute, expression, lights)
 
